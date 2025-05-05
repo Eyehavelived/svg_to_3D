@@ -1,0 +1,7 @@
+# storage files
+.DS_Store
+
+# input/output files
+*/*.svg
+*/*.stl
+
