@@ -31,10 +31,9 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
 
-
 // initialize the scene
 const scene = new THREE.Scene();
-const group = new THREE.Group()
+const group = new THREE.Group();
 
 // Light
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -121,13 +120,24 @@ const renderloop = () => {
   controls.update();  renderer.render(scene, camera);
   group.updateMatrixWorld(true);
 
-  if (loadedCount === totalSVGs) {
-    // exportSTL(group);
-    // exportGLTF(group)
-  }
-
   window.requestAnimationFrame(renderloop);
 };
+
+const buttons = {
+  exportGLTF: () => exportGLTF(group),
+  exportSTL: () => exportSTL(group),
+  importSVG: () => importSVG()
+};
+
+const gui = new GUI();
+let importFiles = gui.addFolder('Import')
+importFiles.add(buttons, 'importSVG').name('Import SVG Files')
+
+let exportFile = gui.addFolder('Export');
+exportFile.add(buttons, 'exportGLTF').name('Export GLTF')
+exportFile.add(buttons, 'exportSTL').name('Export STL')
+exportFile.open();
+
 
 renderloop();
 
@@ -139,6 +149,11 @@ function download(blob, name) {
   link.download = name;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+
+function importSVG() {
+
 }
 
 
