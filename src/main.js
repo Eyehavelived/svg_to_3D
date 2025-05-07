@@ -95,6 +95,7 @@ const renderloop = () => {
 
 const buttons = {
   clearScene: () => clearAll(scene),
+  centerGroup: () => centerObject(group),
   exportGLTF: () => exportGLTF(group),
   exportSTL: () => exportSTL(group),
   importSVG: () => importSVG()
@@ -103,6 +104,7 @@ const buttons = {
 const gui = new GUI();
 let importFiles = gui.addFolder('Import')
 importFiles.add(buttons, 'importSVG').name('Import SVG Files')
+importFiles.add(buttons, 'centerGroup').name('Center Group')
 
 let exportFile = gui.addFolder('Export');
 exportFile.add(buttons, 'exportGLTF').name('Export GLTF')
@@ -179,9 +181,6 @@ function importSVG() {
         });
       });
     });
-    if (i === totalSVGs) {
-      centerObject(group)
-    }
   }
 }
 
