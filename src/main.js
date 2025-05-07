@@ -51,36 +51,7 @@ const extrudeSettings = {
 	bevelSegments: 1
 };
 
-const loader = new SVGLoader();
-let loadedCount = 0;
-const totalSVGs = 4;
 
-for (let i = 1; i <= totalSVGs; i++) {
-  loader.load(`./${i}.svg`, (data) => {
-    console.log(data)
-    const paths = data.paths;
-    console.log(paths)
-  
-    paths.forEach((path) => {
-      const shapes = SVGLoader.createShapes(path);
-      shapes.forEach((shape) => {
-        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-        const material = new THREE.MeshBasicMaterial({
-          color: path.color,
-          side: THREE.DoubleSide,
-        });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(-0.5, -0.5, i/10);  // Center it manually
-        mesh.scale.set(0.01, 0.01, 0.01);  // Downscale large SVGs
-        mesh.rotateX(Math.PI)
-        console.log(mesh)
-        group.add(mesh);
-      });
-    });
-    
-    loadedCount++;
-  });
-}
 
 scene.add(group)
 
@@ -118,12 +89,12 @@ window.addEventListener('resize', () =>{
 // render the scene
 const renderloop = () => {
   controls.update();  renderer.render(scene, camera);
-  group.updateMatrixWorld(true);
 
   window.requestAnimationFrame(renderloop);
 };
 
 const buttons = {
+  clearScene: () => clearAll(scene),
   exportGLTF: () => exportGLTF(group),
   exportSTL: () => exportSTL(group),
   importSVG: () => importSVG()
@@ -138,9 +109,37 @@ exportFile.add(buttons, 'exportGLTF').name('Export GLTF')
 exportFile.add(buttons, 'exportSTL').name('Export STL')
 exportFile.open();
 
+let cleanUp = gui.addFolder('Clean Up')
+cleanUp.add(buttons, 'clearScene').name('Clear Scene')
+
 
 renderloop();
 
+
+function clearAll(parent) {
+  // Does not cover all the cases, and will need to be updated to cover scenarios I haven't 
+  // considered due to a lack of knowledge
+
+  // If parent is a mesh, removes all textures and material from the mesh
+  if (parent.isObject3D) {
+    if (parent.geometry) {
+      parent.geometry.dispose();
+    }
+    if (parent.material) {
+      // If material is an array (e.g., MultiMaterial), dispose each
+      if (Array.isArray(parent.material)) {
+        parent.material.forEach(m => m.dispose());
+      } else {
+        parent.material.dispose();
+      }
+    }}
+  
+  // if parent contains children, then recursively removes children from the parent as well
+  if (parent.children) {
+    parent.children.forEach(c => clearAll(c))
+  }
+  parent.clear()
+}
 
 function download(blob, name) {
   const url = URL.createObjectURL(blob);
@@ -153,9 +152,47 @@ function download(blob, name) {
 
 
 function importSVG() {
+  const loader = new SVGLoader();
 
+  const totalSVGs = 4;
+  
+  for (let i = 1; i <= totalSVGs; i++) {
+    loader.load(`./${i}.svg`, (data) => {
+      // console.log(data)
+      const paths = data.paths;
+      // console.log(paths)
+    
+      paths.forEach((path) => {
+        const shapes = SVGLoader.createShapes(path);
+        shapes.forEach((shape) => {
+          const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+          const material = new THREE.MeshBasicMaterial({
+            color: path.color,
+            side: THREE.DoubleSide,
+          });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.position.set(0, 0, i/10);  // Shift them on the Z axis according to layer number
+          mesh.scale.set(0.01, 0.01, 0.01);  // Downscale large SVGs
+          mesh.rotateX(Math.PI)
+          // console.log(mesh)
+          group.add(mesh);
+        });
+      });
+    });
+    if (i === totalSVGs) {
+      centerObject(group)
+    }
+  }
 }
 
+function centerObject(object) {
+  // centre the group
+  const box = new THREE.Box3().setFromObject(group);
+  const center = new THREE.Vector3();
+  box.getCenter(center);
+  group.position.sub(center);
+  group.updateMatrixWorld(true);
+}
 
 function exportSTL(input) {
   const exporter = new STLExporter();
