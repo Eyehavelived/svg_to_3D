@@ -119,28 +119,45 @@ renderloop();
 
 
 function clearAll(parent) {
+  // Currently doesn't seem to work correctly - removes everything from the scene but 
+  // importing SVGs shows nothing rendered even though they are showing up in the Group's children array
+
   // Does not cover all the cases, and will need to be updated to cover scenarios I haven't 
   // considered due to a lack of knowledge
 
   // If parent is a mesh, removes all textures and material from the mesh
-  if (parent.isObject3D) {
-    if (parent.geometry) {
-      parent.geometry.dispose();
-    }
-    if (parent.material) {
-      // If material is an array (e.g., MultiMaterial), dispose each
-      if (Array.isArray(parent.material)) {
-        parent.material.forEach(m => m.dispose());
-      } else {
-        parent.material.dispose();
+  if (parent.geometry) {
+    parent.geometry.dispose();
+  };
+
+  if (parent.material) {
+    if (Array.isArray(parent.material)) {
+      parent.material.forEach(m => {
+        // checks through each material property to see if it's a texture
+        for (let key in m) {
+          if (m[key]?.isTexture) {
+            m[key].dispose();
+          }
+        }
+        m.dispose();
+      });
+    } else {
+      for (let key in parent.material) {
+        if (parent.material[key]?.isTexture) parent.material[key].dispose();
       }
-    }}
+      parent.material.dispose();
+    }
+  }
   
   // if parent contains children, then recursively removes children from the parent as well
   if (parent.children) {
     parent.children.forEach(c => clearAll(c))
   }
-  parent.clear()
+  parent.clear();
+
+  if (typeof parent.dispose === 'function'){
+    parent.dispose();
+  }
 }
 
 function download(blob, name) {
@@ -175,9 +192,10 @@ function importSVG() {
           const mesh = new THREE.Mesh(geometry, material);
           mesh.position.set(0, 0, i/10);  // Shift them on the Z axis according to layer number
           mesh.scale.set(0.01, 0.01, 0.01);  // Downscale large SVGs
-          mesh.rotateX(Math.PI)
+          mesh.rotateX(Math.PI);
           // console.log(mesh)
           group.add(mesh);
+          group.updateMatrixWorld(true);
         });
       });
     });
@@ -191,6 +209,7 @@ function centerObject(object) {
   box.getCenter(center);
   group.position.sub(center);
   group.updateMatrixWorld(true);
+  console.log(group.children.length)
 }
 
 function exportSTL(input) {
