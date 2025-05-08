@@ -27,6 +27,10 @@ body {
   overflow: hidden;
 }
 
+
+#folderInput {
+  display: none;
+}
 /* canvas {
   display: block;
   position: relative;

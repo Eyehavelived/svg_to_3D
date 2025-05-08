@@ -80,16 +80,19 @@ const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 // controls.autoRotate = true;
 
+// event listener for when resizing window
 window.addEventListener('resize', () =>{
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix()
   renderer.setSize(window.innerWidth, window.innerHeight);
 })
 
+// add event listener for opening svg folder
+document.getElementById('folderInput').addEventListener('change', importSVG);
+
 // render the scene
 const renderloop = () => {
   controls.update();  renderer.render(scene, camera);
-
   window.requestAnimationFrame(renderloop);
 };
 
@@ -98,12 +101,12 @@ const buttons = {
   centerGroup: () => centerObject(group),
   exportGLTF: () => exportGLTF(group),
   exportSTL: () => exportSTL(group),
-  importSVG: () => importSVG()
+  importSVG: () => document.getElementById('folderInput').click()
 };
 
 const gui = new GUI();
 let importFiles = gui.addFolder('Import')
-importFiles.add(buttons, 'importSVG').name('Import SVG Files')
+importFiles.add(buttons, 'importSVG').name('Import SVG Folder')
 importFiles.add(buttons, 'centerGroup').name('Center Group')
 
 let exportFile = gui.addFolder('Export');
@@ -170,17 +173,22 @@ function download(blob, name) {
 }
 
 
-function importSVG() {
+function importSVG(event) {
+  const files = [...event.target.files]
+    .filter(file => file.name.endsWith('.svg'))
+    .sort((a, b) => {
+      return parseInt(a.name) - parseInt(b.name);
+    });
   const loader = new SVGLoader();
 
-  const totalSVGs = 4;
-  
-  for (let i = 1; i <= totalSVGs; i++) {
-    loader.load(`./${i}.svg`, (data) => {
-      // console.log(data)
+  files.forEach((file, index) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const svgText = e.target.result;
+      const data = loader.parse(svgText);
       const paths = data.paths;
-      // console.log(paths)
-    
+
       paths.forEach((path) => {
         const shapes = SVGLoader.createShapes(path);
         shapes.forEach((shape) => {
@@ -190,16 +198,17 @@ function importSVG() {
             side: THREE.DoubleSide,
           });
           const mesh = new THREE.Mesh(geometry, material);
-          mesh.position.set(0, 0, i/10);  // Shift them on the Z axis according to layer number
-          mesh.scale.set(0.01, 0.01, 0.01);  // Downscale large SVGs
+          mesh.position.set(0, 0, index / 10);
+          mesh.scale.set(0.01, 0.01, 0.01);
           mesh.rotateX(Math.PI);
-          // console.log(mesh)
           group.add(mesh);
           group.updateMatrixWorld(true);
         });
       });
-    });
-  }
+    };
+
+    reader.readAsText(file);
+  });
 }
 
 function centerObject(object) {
