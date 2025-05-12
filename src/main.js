@@ -218,7 +218,7 @@ function importSVG(event) {
 
           mesh.position.set(0, 0, index * params.layerDepth);
           mesh.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
-          mesh.rotateX(Math.PI);
+          mesh.rotateZ(Math.PI);
           meshGroup.add(mesh);
           meshGroup.updateMatrixWorld(true);
         });
