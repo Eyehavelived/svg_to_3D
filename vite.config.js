@@ -1,5 +1,10 @@
-export default {
-    root: 'src/',
-    publicDir: '../static/',
-    base: './',
-}
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  root: 'src',
+  build: {
+    outDir: '../dist',
+    emptyOutDir: true
+  },
+  base: './'
+});
