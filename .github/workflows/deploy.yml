@@ -29,3 +29,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           publish_branch: pages
+          user_name: github-actions
+          user_email: github-actions@github.com
