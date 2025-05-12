@@ -33,7 +33,11 @@ import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
 // initialize the scene
 const scene = new THREE.Scene();
-const group = new THREE.Group();
+const meshGroup = new THREE.Group();
+const lineGroup = new THREE.Group();
+const allGroup = new THREE.Group();
+
+allGroup.add(lineGroup, meshGroup)
 
 // Light
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -53,7 +57,7 @@ const extrudeSettings = {
 
 
 
-scene.add(group)
+scene.add(meshGroup)
 
 
 // initialize the camera
@@ -98,9 +102,9 @@ const renderloop = () => {
 
 const buttons = {
   clearScene: () => clearAll(scene),
-  centerGroup: () => centerObject(group),
-  exportGLTF: () => exportGLTF(group),
-  exportSTL: () => exportSTL(group),
+  centerGroup: () => centerObject(allGroup),
+  exportGLTF: () => exportGLTF(meshGroup),
+  exportSTL: () => exportSTL(meshGroup),
   importSVG: () => document.getElementById('folderInput').click()
 };
 
@@ -198,11 +202,16 @@ function importSVG(event) {
             side: THREE.DoubleSide,
           });
           const mesh = new THREE.Mesh(geometry, material);
+
+          const edges = new THREE.EdgesGeometry(geometry);
+          const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+          mesh.add(line);
+
           mesh.position.set(0, 0, index / 10);
           mesh.scale.set(0.01, 0.01, 0.01);
           mesh.rotateX(Math.PI);
-          group.add(mesh);
-          group.updateMatrixWorld(true);
+          meshGroup.add(mesh);
+          meshGroup.updateMatrixWorld(true);
         });
       });
     };
@@ -213,12 +222,12 @@ function importSVG(event) {
 
 function centerObject(object) {
   // centre the group
-  const box = new THREE.Box3().setFromObject(group);
+  const box = new THREE.Box3().setFromObject(meshGroup);
   const center = new THREE.Vector3();
   box.getCenter(center);
-  group.position.sub(center);
-  group.updateMatrixWorld(true);
-  console.log(group.children.length)
+  meshGroup.position.sub(center);
+  meshGroup.updateMatrixWorld(true);
+  console.log(meshGroup.children.length)
 }
 
 function exportSTL(input) {
@@ -243,7 +252,7 @@ function exportGLTF(input) {
   };
 
   gltfExporter.parse(
-    group,
+    meshGroup,
     (result) => {
       let output;
       let blob;
