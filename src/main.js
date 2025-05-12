@@ -108,7 +108,16 @@ const buttons = {
   importSVG: () => document.getElementById('folderInput').click()
 };
 
+const params = {
+  groupReScale: 0.01,
+  layerDepth: 0.1,
+}
+
 const gui = new GUI();
+let settings = gui.addFolder('Settings')
+settings.add(params, 'groupReScale').name('Scale Imports to:')
+settings.add(params, 'layerDepth').name('Resize Layer depth to:')
+
 let importFiles = gui.addFolder('Import')
 importFiles.add(buttons, 'importSVG').name('Import SVG Folder')
 importFiles.add(buttons, 'centerGroup').name('Center Group')
@@ -207,8 +216,8 @@ function importSVG(event) {
           const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
           mesh.add(line);
 
-          mesh.position.set(0, 0, index / 10);
-          mesh.scale.set(0.01, 0.01, 0.01);
+          mesh.position.set(0, 0, index * params.layerDepth);
+          mesh.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
           mesh.rotateX(Math.PI);
           meshGroup.add(mesh);
           meshGroup.updateMatrixWorld(true);
@@ -270,5 +279,4 @@ function exportGLTF(input) {
     },
     options
   );
-
 }
