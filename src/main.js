@@ -1,28 +1,3 @@
-// import './style.css'
-// import javascriptLogo from './javascript.svg'
-// // import viteLogo from '/vite.svg'
-// import { setupCounter } from './counter.js'
-
-// document.querySelector('#app').innerHTML = `
-//   <div>
-//     <a href="https://vite.dev" target="_blank">
-//       <img src="${viteLogo}" class="logo" alt="Vite logo" />
-//     </a>
-//     <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-//       <img src="${javascriptLogo}" class="logo vanilla" alt="JavaScript logo" />
-//     </a>
-//     <h1>Hello Vite!</h1>
-//     <div class="card">
-//       <button id="counter" type="button"></button>
-//     </div>
-//     <p class="read-the-docs">
-//       Click on the Vite logo to learn more
-//     </p>
-//   </div>
-// `
-
-// setupCounter(document.querySelector('#counter'))
-
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
@@ -34,10 +9,6 @@ import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 // initialize the scene
 const scene = new THREE.Scene();
 const meshGroup = new THREE.Group();
-const lineGroup = new THREE.Group();
-const allGroup = new THREE.Group();
-
-allGroup.add(lineGroup, meshGroup)
 
 // Light
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -55,10 +26,7 @@ const extrudeSettings = {
 	bevelSegments: 1
 };
 
-
-
 scene.add(meshGroup)
-
 
 // initialize the camera
 const camera = new THREE.PerspectiveCamera(
@@ -101,8 +69,8 @@ const renderloop = () => {
 };
 
 const buttons = {
-  clearScene: () => clearAll(scene),
-  centerGroup: () => centerObject(allGroup),
+  transformGroup: () => transformObject(meshGroup),
+  centerGroup: () => centerObject(meshGroup),
   exportGLTF: () => exportGLTF(meshGroup),
   exportSTL: () => exportSTL(meshGroup),
   importSVG: () => document.getElementById('folderInput').click()
@@ -115,8 +83,11 @@ const params = {
 
 const gui = new GUI();
 let settings = gui.addFolder('Settings')
-settings.add(params, 'groupReScale').name('Scale Imports to:')
-settings.add(params, 'layerDepth').name('Resize Layer depth to:')
+settings.add(params, 'groupReScale', 0.010, 1).name('Scale Imports to:').step(0.001).onChange(() => {
+  transformObject(meshGroup)
+})
+settings.add(params, 'layerDepth', 0.1, 10).name('Resize Layer depth to:').step(0.1)
+settings.add(buttons, 'transformGroup').name('Update Changes')
 
 let importFiles = gui.addFolder('Import')
 importFiles.add(buttons, 'importSVG').name('Import SVG Folder')
@@ -127,54 +98,8 @@ exportFile.add(buttons, 'exportGLTF').name('Export GLTF')
 exportFile.add(buttons, 'exportSTL').name('Export STL')
 exportFile.open();
 
-let cleanUp = gui.addFolder('Clean Up')
-cleanUp.add(buttons, 'clearScene').name('Clear Scene')
-
-
 renderloop();
 
-
-function clearAll(parent) {
-  // Currently doesn't seem to work correctly - removes everything from the scene but 
-  // importing SVGs shows nothing rendered even though they are showing up in the Group's children array
-
-  // Does not cover all the cases, and will need to be updated to cover scenarios I haven't 
-  // considered due to a lack of knowledge
-
-  // If parent is a mesh, removes all textures and material from the mesh
-  if (parent.geometry) {
-    parent.geometry.dispose();
-  };
-
-  if (parent.material) {
-    if (Array.isArray(parent.material)) {
-      parent.material.forEach(m => {
-        // checks through each material property to see if it's a texture
-        for (let key in m) {
-          if (m[key]?.isTexture) {
-            m[key].dispose();
-          }
-        }
-        m.dispose();
-      });
-    } else {
-      for (let key in parent.material) {
-        if (parent.material[key]?.isTexture) parent.material[key].dispose();
-      }
-      parent.material.dispose();
-    }
-  }
-  
-  // if parent contains children, then recursively removes children from the parent as well
-  if (parent.children) {
-    parent.children.forEach(c => clearAll(c))
-  }
-  parent.clear();
-
-  if (typeof parent.dispose === 'function'){
-    parent.dispose();
-  }
-}
 
 function download(blob, name) {
   const url = URL.createObjectURL(blob);
@@ -196,6 +121,7 @@ function importSVG(event) {
 
   files.forEach((file, index) => {
     const reader = new FileReader();
+    const layer = new THREE.Group;
 
     reader.onload = (e) => {
       const svgText = e.target.result;
@@ -214,28 +140,38 @@ function importSVG(event) {
 
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
-          mesh.add(line);
+          mesh.add(line); // Turns out this has no visible impact on the GLTF export
 
           mesh.position.set(0, 0, index * params.layerDepth);
           mesh.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
           mesh.rotateZ(Math.PI);
-          meshGroup.add(mesh);
-          meshGroup.updateMatrixWorld(true);
+          // meshGroup.add(mesh);
+          layer.add(mesh)
+          // meshGroup.updateMatrixWorld(true);
         });
-      });
+      }); 
+      meshGroup.add(layer)
     };
-
     reader.readAsText(file);
   });
+
+}
+
+function transformObject(object) {
+  object.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
+  object.updateMatrixWorld(true)
 }
 
 function centerObject(object) {
   // centre the group
-  const box = new THREE.Box3().setFromObject(meshGroup);
+  const box = new THREE.Box3().setFromObject(object);
   const center = new THREE.Vector3();
   box.getCenter(center);
-  meshGroup.position.sub(center);
-  meshGroup.updateMatrixWorld(true);
+  
+  object.children.forEach((child) => {
+    child.position.sub(center);
+  });
+  object.updateMatrixWorld(true);
   console.log(meshGroup.children.length)
 }
 
