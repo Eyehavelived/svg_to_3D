@@ -69,7 +69,7 @@ const renderloop = () => {
 };
 
 const buttons = {
-  transformGroup: () => transformObject(meshGroup),
+  transformGroup: () => rescaleObject(meshGroup),
   centerGroup: () => centerObject(meshGroup),
   exportGLTF: () => exportGLTF(meshGroup),
   exportSTL: () => exportSTL(meshGroup),
@@ -77,16 +77,14 @@ const buttons = {
 };
 
 const params = {
-  groupReScale: 0.01,
+  groupReScale: 1.0,
   layerDepth: 0.1,
 }
 
 const gui = new GUI();
 let settings = gui.addFolder('Settings')
-settings.add(params, 'groupReScale', 0.010, 1).name('Scale Imports to:').step(0.001).onChange(() => {
-  transformObject(meshGroup)
-})
-settings.add(params, 'layerDepth', 0.1, 10).name('Resize Layer depth to:').step(0.1)
+settings.add(params, 'groupReScale', 0.010, 0.1).name('Scale Imports to:').step(0.001).onChange(() => rescaleObject(meshGroup))
+settings.add(params, 'layerDepth', 0.1, 100).name('Resize Layer depth to:').step(0.1).onChange(() => moveLayers(meshGroup))
 settings.add(buttons, 'transformGroup').name('Update Changes')
 
 let importFiles = gui.addFolder('Import')
@@ -122,6 +120,8 @@ function importSVG(event) {
   files.forEach((file, index) => {
     const reader = new FileReader();
     const layer = new THREE.Group;
+    layer.name = `${index}`
+    console.log(`reading file ${index}, ${file.name}`)
 
     reader.onload = (e) => {
       const svgText = e.target.result;
@@ -143,7 +143,7 @@ function importSVG(event) {
           mesh.add(line); // Turns out this has no visible impact on the GLTF export
 
           mesh.position.set(0, 0, index * params.layerDepth);
-          mesh.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
+          // mesh.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
           mesh.rotateZ(Math.PI);
           // meshGroup.add(mesh);
           layer.add(mesh)
@@ -157,9 +157,22 @@ function importSVG(event) {
 
 }
 
-function transformObject(object) {
+function rescaleObject(object) {
   object.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
   object.updateMatrixWorld(true)
+}
+
+function moveLayers(group) {
+  group.children
+  .sort((a, b) => {
+    return parseInt(a.name) - parseInt(b.name);
+  })
+    .forEach((layer, index) => {
+    layer.position.z = (index + 1) * params.layerDepth;
+    group.updateMatrixWorld(true);
+  })
+
+  // centerObject(group)
 }
 
 function centerObject(object) {
