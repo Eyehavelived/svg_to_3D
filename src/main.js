@@ -85,6 +85,7 @@ const gui = new GUI();
 let settings = gui.addFolder('Settings')
 settings.add(params, 'groupReScale', 0.010, 0.1).name('Scale Imports to:').step(0.001).onChange(() => rescaleObject(meshGroup))
 settings.add(params, 'layerDepth', 0.1, 100).name('Resize Layer depth to:').step(0.1).onChange(() => moveLayers(meshGroup))
+settings.add(extrudeSettings, 'depth', 1, 100).name('Extrude Depth:')
 settings.add(buttons, 'transformGroup').name('Update Changes')
 
 let importFiles = gui.addFolder('Import')
