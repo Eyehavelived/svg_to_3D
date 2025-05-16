@@ -84,7 +84,7 @@ const renderloop = () => {
 const gui = new GUI();
 let settings = gui.addFolder('Settings')
 settings.add(params, 'groupReScale', 0.010, 0.1).name('Scale Imports to:').step(0.001).onChange(() => rescaleObject(meshGroup))
-const initialExtrudeSetting = settings.add(extrudeSettings, 'depth', 1, 100).name('Extrude Depth:')
+const initialExtrudeSetting = settings.add(extrudeSettings, 'depth', 1, 100).step(1).name('Extrude Depth:')
 
 let importFiles = gui.addFolder('Import')
 importFiles.add(buttons, 'importSVG').name('Import SVG Folder')
@@ -114,7 +114,7 @@ function importSVG(event) {
 
   // Set controller to a different reference
   params.extrudeDepth = extrudeSettings.depth;
-  settings.add(params, 'extrudeDepth', 1, 100).onChange((value) => previewNewExtrusion(value, meshGroup))
+  settings.add(params, 'extrudeDepth', 1, 100).step(1).onChange((value) => previewNewExtrusion(value, meshGroup))
 
 
   const files = [...event.target.files]
@@ -147,9 +147,12 @@ function importSVG(event) {
 
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+          
           mesh.add(line); // Turns out this has no visible impact on the GLTF export
+          // Store mesh shape for replacing geometry later
+          mesh.userData.shape = shape
 
-          mesh.position.set(0, 0, index * (extrudeSettings.depth));
+          mesh.position.z = index * (extrudeSettings.depth);
           // mesh.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
           mesh.rotateZ(Math.PI);
           // meshGroup.add(mesh);
@@ -169,6 +172,18 @@ function rescaleObject(object) {
   object.updateMatrixWorld(true)
 }
 
+
+function moveLayers(group) {
+  group.children
+  .sort((a, b) => {
+    return parseInt(a.name) - parseInt(b.name);
+  })
+    .forEach((layer, index) => {
+    layer.position.z = index * extrudeSettings.depth;
+    // group.updateMatrixWorld(true);
+  })
+}
+
 function centerObject(group) {
   // centre the group
   const box = new THREE.Box3().setFromObject(group);
@@ -182,6 +197,17 @@ function centerObject(group) {
   console.log(meshGroup.children.length)
 }
 
+function finaliseExtrudeGeometries(group) {
+  extrudeSettings.depth *= params.extrudeDepth / extrudeSettings.depth
+  group.children.forEach((layer) => {
+    layer.children.forEach((mesh) => {
+      mesh.geometry.dispose()
+      mesh.geometry = new THREE.ExtrudeGeometry(mesh.userData.shape, extrudeSettings)
+    })
+  })
+  moveLayers(group)
+}
+
 function previewNewExtrusion(newDepth, group) {
   const initialDepth = extrudeSettings.depth
   const scale = newDepth / initialDepth
@@ -192,16 +218,22 @@ function previewNewExtrusion(newDepth, group) {
   })
 }
 
-function exportSTL(input) {
+function exportSTL(group) {
+  if (params.extrudeDepth !== extrudeSettings.depth) {
+    finaliseExtrudeGeometries(group)
+  }
   const exporter = new STLExporter();
-  const result = exporter.parse(input, { binary: true });
+  const result = exporter.parse(group, { binary: true });
 
   const blob = new Blob([result], { type: 'application/octet-stream' });
   
   download(blob, "model.stl")
 }
 
-function exportGLTF(input) {
+function exportGLTF(group) {
+  if (params.extrudeDepth !== extrudeSettings.depth) {
+    finaliseExtrudeGeometries(group)
+  }
 
   const gltfExporter = new GLTFExporter();
 
