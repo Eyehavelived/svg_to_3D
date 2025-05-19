@@ -151,6 +151,7 @@ function importSVG(event) {
 
           const edges = new THREE.EdgesGeometry(geometry);
           const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+          line.name = "line"
           
           mesh.add(line); // Turns out this has no visible impact on the GLTF export
           // Store mesh shape for replacing geometry later
@@ -211,6 +212,17 @@ function finaliseExtrudeGeometries(group) {
     layer.children.forEach((mesh) => {
       mesh.geometry.dispose()
       mesh.geometry = new THREE.ExtrudeGeometry(mesh.userData.shape, extrudeSettings)
+
+      mesh.children.forEach((child) => {
+        if (child.name === "line") {
+          child.dispose()
+        }
+      })
+
+      const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+      line.name = "line"
+      
+      mesh.add(line);
     })
   })
   moveLayers(group)
