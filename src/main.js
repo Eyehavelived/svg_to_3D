@@ -25,6 +25,8 @@ const extrudeSettings = {
 	bevelSegments: 1
 };
 
+const centerBox = {}
+
 const buttons = {
   transformGroup: () => rescaleObject(meshGroup),
   centerGroup: () => centerObject(meshGroup),
@@ -187,7 +189,11 @@ function moveLayers(group) {
 }
 
 function centerObject(group) {
-  // centre the group
+  // save & temporarily neutralise the scale
+  const savedScale = group.scale.clone();
+  group.scale.set(1, 1, 1);
+  group.updateMatrixWorld(true);
+  
   const box = new THREE.Box3().setFromObject(group);
   const center = new THREE.Vector3();
   box.getCenter(center);
@@ -195,8 +201,8 @@ function centerObject(group) {
   group.children.forEach((child) => {
     child.position.sub(center);
   });
+  group.scale.copy(savedScale);
   group.updateMatrixWorld(true);
-  console.log(meshGroup.children.length)
 }
 
 function finaliseExtrudeGeometries(group) {
