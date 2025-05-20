@@ -206,8 +206,10 @@ function centerObject(group) {
   group.updateMatrixWorld(true);
 }
 
-function finaliseExtrudeGeometries(group) {
-  extrudeSettings.depth *= params.extrudeDepth / extrudeSettings.depth
+async function finaliseExtrudeGeometries(group) {
+  // Fixes an issue where one mesh's geometry has incorrect depth
+  await updateExtrudeDepth()
+
   group.children.forEach((layer) => {
     layer.children.forEach((mesh) => {
       mesh.geometry.dispose()
@@ -219,6 +221,7 @@ function finaliseExtrudeGeometries(group) {
         }
       })
 
+      const edges = new THREE.EdgesGeometry(mesh.geometry);
       const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
       line.name = "line"
       
@@ -226,6 +229,10 @@ function finaliseExtrudeGeometries(group) {
     })
   })
   moveLayers(group)
+}
+
+async function updateExtrudeDepth() {
+  params.extrudeDepth = params.extrudeDepth;
 }
 
 function previewNewExtrusion(newDepth, group) {
