@@ -91,7 +91,7 @@ settings.add(params, 'groupReScale', 0.010, 0.1).name('Scale Imports to:').step(
 const initialExtrudeSetting = settings.add(extrudeSettings, 'depth', 1, 100).step(1).name('Extrude Depth:')
 
 let importFiles = gui.addFolder('Import')
-importFiles.add(buttons, 'importSVG').name('Import SVG Folder')
+const importFilesButton = importFiles.add(buttons, 'importSVG').name('Import SVG Folder')
 importFiles.add(buttons, 'centerGroup').name('Center Group')
 
 let exportFile = gui.addFolder('Export');
@@ -115,6 +115,9 @@ function download(blob, name) {
 function importSVG(event) {
   // Finalise initial extrude value
   initialExtrudeSetting.destroy();
+
+  // Remove import button
+  importFilesButton.destroy();
 
   // Set controller to a different reference
   params.extrudeDepth = extrudeSettings.depth;
