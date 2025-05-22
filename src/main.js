@@ -25,7 +25,7 @@ const extrudeSettings = {
 	bevelSegments: 1
 };
 
-const centerBox = {}
+const layerDepths = {}
 
 const buttons = {
   transformGroup: () => rescaleObject(meshGroup),
@@ -88,7 +88,7 @@ const renderloop = () => {
 const gui = new GUI();
 let settings = gui.addFolder('Settings')
 settings.add(params, 'groupReScale', 0.010, 0.1).name('Scale Imports to:').step(0.001).onChange(() => rescaleObject(meshGroup))
-const initialExtrudeSetting = settings.add(extrudeSettings, 'depth', 1, 100).step(1).name('Extrude Depth:')
+const initialExtrudeSetting = settings.add(extrudeSettings, 'depth', 1, 100).step(1).name('Initial Extrude Depth:')
 
 let importFiles = gui.addFolder('Import')
 const importFilesButton = importFiles.add(buttons, 'importSVG').name('Import SVG Folder')
@@ -98,6 +98,8 @@ let exportFile = gui.addFolder('Export');
 exportFile.add(buttons, 'exportGLTF').name('Export GLTF')
 exportFile.add(buttons, 'exportSTL').name('Export STL')
 exportFile.open();
+
+let layerDepthControls = gui.addFolder('Layer Depth');
 
 renderloop();
 
@@ -135,6 +137,14 @@ function importSVG(event) {
     const reader = new FileReader();
     const layer = new THREE.Group;
     layer.name = `${index}`
+
+    // const initialExtrudeSetting = settings.add(extrudeSettings, 'Initial Depth', 1, 100).step(1).name('Extrude Depth:')
+    layerDepths[index] = params.layerDepth;
+    layerDepthControls.add(layerDepths, index, 0, 100).step(1).name(`${index}`).onChange((value) => {
+      layerDepths[index] = value
+      moveLayers(meshGroup)
+    })
+
     console.log(`reading file ${index}, ${file.name}`)
 
     reader.onload = (e) => {
@@ -187,8 +197,9 @@ function moveLayers(group) {
     return parseInt(a.name) - parseInt(b.name);
   })
     .forEach((layer, index) => {
-    layer.position.z = index * extrudeSettings.depth;
-    // group.updateMatrixWorld(true);
+      // Add the depth of all preceding layers together from layerDepths
+      layer.position.z = Array.from({length: index}, (_, i) => i)
+                          .reduce((total, key) => total + (layerDepths[key] || 0), 0);
   })
 }
 
