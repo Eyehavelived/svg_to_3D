@@ -37,6 +37,7 @@ const buttons = {
 };
 
 const params = {
+  useGlobalDepth: false,
   groupReScale: 1.0,
   layerDepth: extrudeSettings.depth,
   extrudeDepth: extrudeSettings.depth
@@ -92,6 +93,7 @@ settings.add(params, 'groupReScale', 0.010, 0.1).name('Scale Imports to:').step(
 const initialExtrudeSetting = settings.add(extrudeSettings, 'depth', 1, 100).step(1).name('Initial Extrude Depth:')
 
 let importFiles = gui.addFolder('Import')
+const useGlobalLayerDepthCheckbox = importFiles.add(params, 'useGlobalDepth').name('Use extrude depth for all layers')
 const importFilesButton = importFiles.add(buttons, 'importSVG').name('Import SVG Folder')
 importFiles.add(buttons, 'centerGroup').name('Center Group')
 
@@ -100,7 +102,7 @@ exportFile.add(buttons, 'exportGLTF').name('Export GLTF')
 exportFile.add(buttons, 'exportSTL').name('Export STL')
 exportFile.open();
 
-let layerDepthControls = gui.addFolder('Layer Depth');
+let layerDepthControls = settings.addFolder('Layer Depth');
 
 renderloop();
 
@@ -117,6 +119,7 @@ function download(blob, name) {
 
 function importSVG(event) {
   // Finalise initial extrude value
+  useGlobalLayerDepthCheckbox.destroy();
   initialExtrudeSetting.destroy();
 
   // Remove import button
@@ -124,7 +127,6 @@ function importSVG(event) {
 
   // Set controller to a different reference
   params.extrudeDepth = extrudeSettings.depth;
-  settings.add(params, 'extrudeDepth', 1, 100).step(1).onChange((value) => previewNewExtrusion(value, meshGroup))
 
 
   const files = [...event.target.files]
@@ -134,18 +136,30 @@ function importSVG(event) {
     });
   const loader = new SVGLoader();
 
+  if (params.useGlobalDepth) {
+    layerDepthControls.destroy()
+    settings.add(params, 'extrudeDepth', 1, 100).name('Global Extrude Depth').step(1).onChange((value) => {
+      previewNewExtrusion(meshGroup)
+    })
+  } else {
+    for (let i = 0; i < files.length; i++) {
+      initialLayerDepths[i] = params.extrudeDepth;
+      layerDepths[i] = params.extrudeDepth;
+    }
+  }
+
   files.forEach((file, index) => {
     const reader = new FileReader();
     const layer = new THREE.Group;
     layer.name = `${index}`
 
-    // const initialExtrudeSetting = settings.add(extrudeSettings, 'Initial Depth', 1, 100).step(1).name('Extrude Depth:')
-    layerDepthControls.add(layerDepths, index, 0, 100).step(1).name(`${index}`).onChange((value) => {
-      layerDepths[index] = value
-      moveLayers(meshGroup)
-    })
-
-    console.log(`reading file ${index}, ${file.name}`)
+    if (!params.useGlobalDepth) {
+      layerDepthControls.add(layerDepths, index, 0, 100).step(1).name(`${index}`).onChange((value) => {
+        layerDepths[index] = value
+        moveLayers(meshGroup)
+        previewNewExtrusion(meshGroup)
+      })
+    }
 
     reader.onload = (e) => {
       const svgText = e.target.result;
@@ -170,7 +184,7 @@ function importSVG(event) {
           // Store mesh shape for replacing geometry later
           mesh.userData.shape = shape
 
-          mesh.position.z = index * (extrudeSettings.depth);
+          // mesh.position.z = index * (extrudeSettings.depth);
           // mesh.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
           mesh.rotateZ(Math.PI);
           // meshGroup.add(mesh);
@@ -179,10 +193,13 @@ function importSVG(event) {
         });
       }); 
       meshGroup.add(layer)
+      if (index === files.length - 1) {
+        moveLayers(meshGroup)
+        centerObject(meshGroup)
+      }
     };
     reader.readAsText(file);
   });
-
 }
 
 function rescaleObject(object) {
@@ -249,14 +266,22 @@ async function updateExtrudeDepth() {
   params.extrudeDepth = params.extrudeDepth;
 }
 
-function previewNewExtrusion(newDepth, group) {
-  const initialDepth = extrudeSettings.depth
-  const scale = newDepth / initialDepth
-  group.children
-  .forEach((layer) => {
-    layer.scale.z = scale;
-    group.updateMatrixWorld(true);
-  })
+function previewNewExtrusion(group) {
+  if (params.useGlobalDepth) {
+    const scale = params.extrudeDepth / extrudeSettings.depth // newDepth / initialDepth
+    group.children
+    .forEach((layer) => {
+      layer.scale.z = scale;
+    })
+  } else {
+    group.children
+    .forEach((layer) => {
+      let i = parseInt(layer.name)
+      const scale = layerDepths[i] / initialLayerDepths[i]
+      layer.scale.z = scale;
+    })
+  }
+  group.updateMatrixWorld(true);
 }
 
 function exportSTL(group) {
