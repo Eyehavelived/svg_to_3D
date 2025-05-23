@@ -26,6 +26,7 @@ const extrudeSettings = {
 };
 
 const layerDepths = {}
+const initialLayerDepths = {}
 
 const buttons = {
   transformGroup: () => rescaleObject(meshGroup),
@@ -139,7 +140,6 @@ function importSVG(event) {
     layer.name = `${index}`
 
     // const initialExtrudeSetting = settings.add(extrudeSettings, 'Initial Depth', 1, 100).step(1).name('Extrude Depth:')
-    layerDepths[index] = params.layerDepth;
     layerDepthControls.add(layerDepths, index, 0, 100).step(1).name(`${index}`).onChange((value) => {
       layerDepths[index] = value
       moveLayers(meshGroup)
