@@ -27,6 +27,7 @@ const extrudeSettings = {
 
 const layerDepths = {}
 const initialLayerDepths = {}
+const layerDistances = {}
 
 const buttons = {
   transformGroup: () => rescaleObject(meshGroup),
@@ -102,7 +103,8 @@ exportFile.add(buttons, 'exportGLTF').name('Export GLTF')
 exportFile.add(buttons, 'exportSTL').name('Export STL')
 exportFile.open();
 
-let layerDepthControls = settings.addFolder('Layer Depth');
+let layerDepthControls = settings.addFolder('Layer Thickness');
+let layerDistanceControls = settings.addFolder('Layer Distance')
 
 renderloop();
 
@@ -138,6 +140,7 @@ function importSVG(event) {
 
   if (params.useGlobalDepth) {
     layerDepthControls.destroy()
+    layerDistanceControls.destroy()
     settings.add(params, 'extrudeDepth', 1, 100).name('Global Extrude Depth').step(1).onChange((value) => {
       previewNewExtrusion(meshGroup)
     })
@@ -145,6 +148,7 @@ function importSVG(event) {
     for (let i = 0; i < files.length; i++) {
       initialLayerDepths[i] = params.extrudeDepth;
       layerDepths[i] = params.extrudeDepth;
+      layerDistances[i] = 0;
     }
   }
 
@@ -158,6 +162,9 @@ function importSVG(event) {
         layerDepths[index] = value
         moveLayers(meshGroup)
         previewNewExtrusion(meshGroup)
+      })
+      layerDistanceControls.add(layerDistances, index, 0, 100).step(1).name(`${index}`).onChange((value) => {
+        moveLayers(meshGroup)
       })
     }
 
@@ -216,7 +223,7 @@ function moveLayers(group) {
     .forEach((layer, index) => {
       // Add the depth of all preceding layers together from layerDepths
       layer.position.z = Array.from({length: index}, (_, i) => i)
-                          .reduce((total, key) => total + (layerDepths[key] || 0), 0);
+                          .reduce((total, key) => total + (layerDepths[key] || 0) + (layerDistances[key] || 0), 0);
   })
 }
 
