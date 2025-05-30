@@ -265,7 +265,7 @@ function centerObject(group) {
 
 async function finaliseExtrudeGeometries(group) {
   // Fixes an issue where one mesh's geometry has incorrect depth
-  await updateExtrudeDepth()
+  await _updateExtrudeDepth()
 
   group.children.forEach((layer) => {
     layer.children.forEach((mesh) => {
@@ -288,7 +288,7 @@ async function finaliseExtrudeGeometries(group) {
   moveLayers(group)
 }
 
-async function updateExtrudeDepth() {
+async function _updateExtrudeDepth() {
   return Promise(() => {
     params.extrudeDepth = params.extrudeDepth;
   })
