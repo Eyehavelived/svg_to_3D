@@ -158,61 +158,74 @@ async function importSVG(event) {
   await _processFiles(files)
   moveLayers(meshGroup)
   centerObject(meshGroup)
+
 }
 
-function _processFiles(files){
+async function _processFiles(files){
   const loader = new SVGLoader();
-  files.forEach((file, index) => {
-    const reader = new FileReader();
-    const layer = new THREE.Group;
-    layer.name = `${index}`
+  const tasks = Array.from(files).map((file, index) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      const layer = new THREE.Group;
+      layer.name = `${index}`
 
-    if (!params.useGlobalDepth) {
-      layerDepthControls.add(layerDepths, index, 0, 100).step(1).name(`${index}`).onChange((value) => {
-        layerDepths[index] = value
-        moveLayers(meshGroup)
-        previewNewExtrusion(meshGroup)
-      })
-      layerDistanceControls.add(layerDistances, index, 0, 100).step(1).name(`${index}`).onChange((value) => {
-        moveLayers(meshGroup)
-      })
-    }
+      if (!params.useGlobalDepth) {
+        layerDepthControls.add(layerDepths, index, 0, 100).step(1).name(`${index}`).onChange((value) => {
+          layerDepths[index] = value
+          moveLayers(meshGroup)
+          previewNewExtrusion(meshGroup)
+        })
+        layerDistanceControls.add(layerDistances, index, 0, 100).step(1).name(`${index}`).onChange((value) => {
+          moveLayers(meshGroup)
+        })
+      }
 
-    reader.onload = (e) => {
-      const svgText = e.target.result;
-      const data = loader.parse(svgText);
-      const paths = data.paths;
+      reader.onload = (e) => {
+        try {
+          const svgText = e.target.result;
+          const data = loader.parse(svgText);
+          const paths = data.paths;
 
-      paths.forEach((path) => {
-        const shapes = SVGLoader.createShapes(path);
-        shapes.forEach((shape) => {
-          const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-          const material = new THREE.MeshBasicMaterial({
-            color: path.color,
-            side: THREE.DoubleSide,
-          });
-          const mesh = new THREE.Mesh(geometry, material);
+          paths.forEach((path) => {
+            const shapes = SVGLoader.createShapes(path);
+            shapes.forEach((shape) => {
+              const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+              const material = new THREE.MeshBasicMaterial({
+                color: path.color,
+                side: THREE.DoubleSide,
+              });
+              const mesh = new THREE.Mesh(geometry, material);
 
-          const edges = new THREE.EdgesGeometry(geometry);
-          const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
-          line.name = "line"
-          
-          mesh.add(line); // Turns out this has no visible impact on the GLTF export
-          // Store mesh shape for replacing geometry later
-          mesh.userData.shape = shape
+              const edges = new THREE.EdgesGeometry(geometry);
+              const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+              line.name = "line"
+              
+              mesh.add(line); // Turns out this has no visible impact on the GLTF export
+              // Store mesh shape for replacing geometry later
+              mesh.userData.shape = shape
 
-          // mesh.position.z = index * (extrudeSettings.depth);
-          // mesh.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
-          mesh.rotateZ(Math.PI);
-          // meshGroup.add(mesh);
-          layer.add(mesh)
-          // meshGroup.updateMatrixWorld(true);
-        });
-      }); 
-      meshGroup.add(layer)
-    };
-    reader.readAsText(file);
+              // mesh.position.z = index * (extrudeSettings.depth);
+              // mesh.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
+              mesh.rotateZ(Math.PI);
+              // meshGroup.add(mesh);
+              layer.add(mesh)
+              // meshGroup.updateMatrixWorld(true);
+            });
+          }); 
+          meshGroup.add(layer);
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      };
+
+      reader.onerror = (err) => {
+        reject(err);
+      };
+      reader.readAsText(file);
+    })
   });
+  await Promise.all(tasks)
 }
 
 function rescaleObject(object) {
