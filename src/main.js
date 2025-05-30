@@ -201,15 +201,11 @@ async function _processFiles(files){
               line.name = "line"
               
               mesh.add(line); // Turns out this has no visible impact on the GLTF export
+
               // Store mesh shape for replacing geometry later
               mesh.userData.shape = shape
-
-              // mesh.position.z = index * (extrudeSettings.depth);
-              // mesh.scale.set(params.groupReScale, params.groupReScale, params.groupReScale);
               mesh.rotateZ(Math.PI);
-              // meshGroup.add(mesh);
               layer.add(mesh)
-              // meshGroup.updateMatrixWorld(true);
             });
           }); 
           meshGroup.add(layer);
@@ -240,7 +236,6 @@ function moveLayers(group) {
     return parseInt(a.name) - parseInt(b.name);
   })
     .forEach((layer, index) => {
-      console.log(`moving layer ${layer.name}`)
       if (params.useGlobalDepth) {
         layer.position.z = (params.extrudeDepth + params.layerDistance) * index
       } else {
@@ -294,7 +289,9 @@ async function finaliseExtrudeGeometries(group) {
 }
 
 async function updateExtrudeDepth() {
-  params.extrudeDepth = params.extrudeDepth;
+  return Promise(() => {
+    params.extrudeDepth = params.extrudeDepth;
+  })
 }
 
 function previewNewExtrusion(group) {
