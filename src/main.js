@@ -27,7 +27,7 @@ const extrudeSettings = {
 
 const layerDepths = {}
 const initialLayerDepths = {}
-const layerDistances = {}
+let layerDistances = {}
 
 const buttons = {
   transformGroup: () => rescaleObject(meshGroup),
@@ -40,8 +40,8 @@ const buttons = {
 const params = {
   useGlobalDepth: false,
   groupReScale: 1.0,
-  layerDepth: extrudeSettings.depth,
-  extrudeDepth: extrudeSettings.depth
+  layerDistance: 0,
+  extrudeDepth: extrudeSettings.depth,
 }
 
 scene.add(meshGroup)
@@ -119,7 +119,7 @@ function download(blob, name) {
 }
 
 
-function importSVG(event) {
+async function importSVG(event) {
   // Finalise initial extrude value
   useGlobalLayerDepthCheckbox.destroy();
   initialExtrudeSetting.destroy();
@@ -136,13 +136,17 @@ function importSVG(event) {
     .sort((a, b) => {
       return parseInt(a.name) - parseInt(b.name);
     });
-  const loader = new SVGLoader();
 
   if (params.useGlobalDepth) {
     layerDepthControls.destroy()
     layerDistanceControls.destroy()
-    settings.add(params, 'extrudeDepth', 1, 100).name('Global Extrude Depth').step(1).onChange((value) => {
+    layerDistances = Array.from({length: files.length}, (_) => params.extrudeDepth)
+    settings.add(params, 'extrudeDepth', 1, 100).name('Global Thickness').step(1).onChange(() => {
       previewNewExtrusion(meshGroup)
+      moveLayers(meshGroup)
+    })
+    settings.add(params, 'layerDistance', 0, 100).name('Global Layer Distance').step(1).onChange(() => {
+      moveLayers(meshGroup)
     })
   } else {
     for (let i = 0; i < files.length; i++) {
@@ -151,7 +155,13 @@ function importSVG(event) {
       layerDistances[i] = 0;
     }
   }
+  await _processFiles(files)
+  moveLayers(meshGroup)
+  centerObject(meshGroup)
+}
 
+function _processFiles(files){
+  const loader = new SVGLoader();
   files.forEach((file, index) => {
     const reader = new FileReader();
     const layer = new THREE.Group;
@@ -200,10 +210,6 @@ function importSVG(event) {
         });
       }); 
       meshGroup.add(layer)
-      if (index === files.length - 1) {
-        moveLayers(meshGroup)
-        centerObject(meshGroup)
-      }
     };
     reader.readAsText(file);
   });
@@ -221,9 +227,14 @@ function moveLayers(group) {
     return parseInt(a.name) - parseInt(b.name);
   })
     .forEach((layer, index) => {
-      // Add the depth of all preceding layers together from layerDepths
-      layer.position.z = Array.from({length: index}, (_, i) => i)
-                          .reduce((total, key) => total + (layerDepths[key] || 0) + (layerDistances[key] || 0), 0);
+      console.log(`moving layer ${layer.name}`)
+      if (params.useGlobalDepth) {
+        layer.position.z = (params.extrudeDepth + params.layerDistance) * index
+      } else {
+        // Add the depth of all preceding layers together from layerDepths
+        layer.position.z = Array.from({length: index}, (_, i) => i)
+                            .reduce((total, key) => total + (layerDepths[key] || 0) + (layerDistances[key] || 0), 0);
+      }
   })
 }
 
@@ -280,6 +291,7 @@ function previewNewExtrusion(group) {
     .forEach((layer) => {
       layer.scale.z = scale;
     })
+
   } else {
     group.children
     .forEach((layer) => {
