@@ -203,7 +203,7 @@ async function _processFiles(files){
               mesh.add(line); // Turns out this has no visible impact on the GLTF export
 
               // Store mesh shape for replacing geometry later
-              mesh.userData.shape = shape
+              // mesh.userData.shape = shape
               mesh.rotateZ(Math.PI);
               layer.add(mesh)
             });
@@ -263,37 +263,6 @@ function centerObject(group) {
   group.updateMatrixWorld(true);
 }
 
-async function finaliseExtrudeGeometries(group) {
-  // Fixes an issue where one mesh's geometry has incorrect depth
-  await _updateExtrudeDepth()
-
-  group.children.forEach((layer) => {
-    layer.children.forEach((mesh) => {
-      mesh.geometry.dispose()
-      mesh.geometry = new THREE.ExtrudeGeometry(mesh.userData.shape, extrudeSettings)
-
-      mesh.children.forEach((child) => {
-        if (child.name === "line") {
-          child.dispose()
-        }
-      })
-
-      const edges = new THREE.EdgesGeometry(mesh.geometry);
-      const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
-      line.name = "line"
-      
-      mesh.add(line);
-    })
-  })
-  moveLayers(group)
-}
-
-async function _updateExtrudeDepth() {
-  return Promise(() => {
-    params.extrudeDepth = params.extrudeDepth;
-  })
-}
-
 function previewNewExtrusion(group) {
   if (params.useGlobalDepth) {
     const scale = params.extrudeDepth / extrudeSettings.depth // newDepth / initialDepth
@@ -314,9 +283,6 @@ function previewNewExtrusion(group) {
 }
 
 function exportSTL(group) {
-  if (params.extrudeDepth !== extrudeSettings.depth) {
-    finaliseExtrudeGeometries(group)
-  }
   const exporter = new STLExporter();
   const result = exporter.parse(group, { binary: true });
 
@@ -325,11 +291,13 @@ function exportSTL(group) {
   download(blob, "model.stl")
 }
 
-function exportGLTF(group) {
+function export3MF(group) {
   if (params.extrudeDepth !== extrudeSettings.depth) {
     finaliseExtrudeGeometries(group)
   }
+}
 
+function exportGLTF(group) {
   const gltfExporter = new GLTFExporter();
 
   const options = {
